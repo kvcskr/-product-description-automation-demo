@@ -1,0 +1,215 @@
+{
+  "name": "Automatyzacja opisów produktów ze zdjęć",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "4662f5f9-cc95-4709-afab-61e5411a96f2",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "mimeType = 'application/vnd.google-apps.folder'",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "TWOJE_FOLDER_ID_GOOGLE_DRIVE",
+            "mode": "list",
+            "cachedResultName": "Zdjęcia produktów",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/TWOJE_FOLDER_ID_GOOGLE_DRIVE"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [224, 0],
+      "id": "4a276615-d19d-4fac-8da1-40212110550d",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "TWOJE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [448, 0],
+      "id": "7e017997-be98-4f6c-85b5-8ef86cf57123",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "mimeType contains 'image/'",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [672, 0],
+      "id": "9799de27-52db-4f68-a37f-905835bb5558",
+      "name": "Search files and folders1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "TWOJE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$json.id}}\n",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [896, 0],
+      "id": "73bb2cd8-e6af-47bd-8912-4ce0b3f5123e",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "TWOJE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Zbiera wiele itemów (każdy ma binary.data) do 1 itemu z wieloma binarkami: image1, image2, ...\nconst out = {\n  json: {\n    folderId: $input.first().json.id,\n    folderName: $input.first().json.name,\n  },\n  binary: {}\n};\n\nconst items = $input.all();\n\nitems.forEach((item, idx) => {\n  if (item.binary && item.binary.data) {\n    out.binary[`image${idx + 1}`] = item.binary.data;\n  }\n});\n\nreturn [out];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0],
+      "id": "a5f39459-f4e8-44a8-9bc8-f7a30f630669",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-2024-11-20",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-2024-11-20"
+        },
+        "text": "=Masz kilka zdjęć tego samego produktu (różne ujęcia). Na podstawie tego wciel się w agenta, który opisuje te produkty, postępując zgodnie z poniższymi instrukcjami. Opis jest na stronę internetową więc pilnuj schematu.\n- Styl opisu:\nPisz w języku naturalnym, profesjonalnym i przystępnym – odpowiednim na stronę internetową dla gastronomii.\nTon ma być formalny, ale swobodny, bez języka korporacyjnego i bez nadmiernego luzu.\nZdania powinny brzmieć tak, jakby produkt polecał doświadczony kucharz lub menedżer lokalu – rzeczowo, konkretnie i „po ludzku".\nZdania mają brzmieć naturalnie dla kucharzy, menedżerów restauracji i szefa kuchni bez nadmiernego „papierowego" języka.\n\nUnikaj miękkich, subiektywnych określeń jakości\nOpisuj produkt wyłącznie przez jego zastosowanie.\n\n- Dodatkowe ograniczenia:\nUnikaj technicznych i branżowych sformułowań typu:\n„kuchnia restauracyjna", „zaplecze gastronomiczne", „proces technologiczny".\n\nNie opisuj opakowania jako cechy funkcjonalnej produktu \n(nie wspominaj o wiadrze, porcjowaniu, wygodzie pakowania ani formie opakowania w części opisowej i korzyściach).\n\nNie zwracaj się bezpośrednio do kucharza, szefa kuchni ani personelu.\nNie używaj konstrukcji typu:\n„produkt daje kucharzowi", „kucharz może", „szef kuchni ma możliwość".\n\nOpisuj produkt neutralnie – przez jego zastosowanie,\nużywając prostych, codziennych określeń.\n\nUnikaj technicznych i broszurowych sformułowań typu:\n„stworzone z myślą o…", „intensywna praca", „odpowiedź na potrzeby rynku", „rozwiązanie dla branży".\n\nNie zmyślaj danych technicznych (np. gramatury, EAN, certyfikatów).\nJeśli dana informacja nie wynika jednoznacznie z nazwy lub zdjęcia, zaznacz ją jako:\n„brak informacji od producenta".\n\n- ARCHITEKTURA OPISU (OBOWIĄZKOWA STRUKTURA):\n-Nazwa produktu czyli pełna nazwa produktu wraz z gramaturą\n-Firma\n-Krótki trzy zdaniowy opis, który w pierwszym zdaniu ma opis produktu (czyli odpowiedź co to jest za produkt) i jaką ma formę, następnie w drugim zdaniu należy opisać smak produktu, a w trzecim akapice można delikatnie wpleść informację o zastosowaniu produktu w daniach, w wybranych segmentach lokali z bazy: kebab, fast food, pizzeria, burgerownia, restauracja — wyłącznie wtedy, gdy wynika to bezpośrednio z charakteru produktu i jest uzasadnione kulinarnie. Informacja o segmentach lokali może pojawić się tylko w tym miejscu i nie może być powtarzana ani parafrazowana w dalszej części opisu. Opis powinien być zwięzły, kulinarny, i dopuszczać lekki, naturalny charakter sprzedażowy. Informacje o gotowości do spożycia może występować wyłącznie w dedykowanej sekcji 'Gotowość do spożycia' i nie może pojawiać się w opisie głównym.\n-Cecha – korzyść (Podaj od 2 do 4 wartości cech i korzyści, które w swojej formie, informacjami, będą w stanie zachęcić właściciela lokalu gastronomicznego do zakupu produktu.)\n-KOD EAN (tutaj wstaw numer kodu kreskowego z produktu)\n\n- FORMAT WYJŚCIA (OBOWIĄZKOWY)\n\nNie używaj nagłówków ani etykiet: „Krótki opis", „Cecha – korzyść\"\n\nCechy i korzyści wypisuj jako osobne linie tekstu, każda w formacie:\ncecha – efekt użytkowy\n\nNie stosuj punktorów graficznych, numeracji ani ikon\n\nMyślnik „–" stosuj wyłącznie do łączenia cechy z efektem\n\nOdpowiedź ma być gotowa do bezpośredniego wklejenia do systemu produktowego\n\nZwróć wynik jako 9 linii, każda w formacie KEY=VALUE.\nNie dodawaj żadnych innych linii.\nJeśli brak danych, wpisz dokładnie: brak informacji od producenta\n\nNAZWA_PRODUKTU=\nFIRMA=\nKROTKI_OPIS=\nCECHY_KORZYSCI=linia1|linia2|linia3|linia4\nKOD_EAN=\n\n",
+        "inputType": "base64",
+        "binaryPropertyName": "={{ Object.keys($binary).filter(k => k.startsWith('image')).join(',') }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1344, 0],
+      "id": "4ea62d14-b159-4f76-a15d-2aca4d8baf6d",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "TWOJE_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = $json;\n\nlet text =\n  root?.[0]?.content?.find(c => c.type === 'output_text')?.text\n  || root?.[0]?.content?.[0]?.text\n  || root?.[0]?.[0]?.content?.find(c => c.type === 'output_text')?.text\n  || root?.[0]?.[0]?.content?.[0]?.text\n  || '';\n\nif (!text) {\n  return [{ json: { error: 'Nie znalazłem pola text w odpowiedzi', raw: root } }];\n}\n\nconst lines = text\n  .split(/\\r?\\n/)\n  .map(l => l.trim())\n  .filter(Boolean);\n\nconst data = {};\nfor (const line of lines) {\n  const eq = line.indexOf('=');\n  if (eq === -1) continue;\n  const key = line.slice(0, eq).trim();\n  const value = line.slice(eq + 1).trim();\n  data[key] = value;\n}\n\nconst cechyKorzysci = (data.CECHY_KORZYSCI || '')\n  .split('|')\n  .map(s => s.trim())\n  .filter(Boolean)\n  .join('\\n');\n\nreturn [\n  {\n    json: {\n      nazwa_produktu: data.NAZWA_PRODUKTU || '',\n      firma: data.FIRMA || '',\n      krotki_opis: data.KROTKI_OPIS || '',\n      cechy_korzysci: cechyKorzysci,\n      kod_ean: data.KOD_EAN || '',\n      raw_text: text,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 0],
+      "id": "41389417-5579-4436-a488-5004e2d7c4f8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TWOJE_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Opisy produktów",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/TWOJE_SPREADSHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Arkusz1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/TWOJE_SPREADSHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nazwa produktu": "={{ $json.nazwa_produktu }}",
+            "firma": "={{ $json.firma }}",
+            "cecha korzyść": "={{ $json.cechy_korzysci }}",
+            "krótki opis": "={{ $json.krotki_opis }}",
+            "EAN": "={{ $json.kod_ean }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Nazwa produktu", "displayName": "Nazwa produktu", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "firma", "displayName": "firma", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "cecha korzyść", "displayName": "cecha korzyść", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "krótki opis", "displayName": "krótki opis", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "EAN", "displayName": "EAN", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1792, 0],
+      "id": "95e1d62e-fd6c-4f43-bd2b-07b2669e2277",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "TWOJE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Execute workflow'": { "main": [[{ "node": "Search files and folders", "type": "main", "index": 0 }]] },
+    "Search files and folders": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
+    "Loop Over Items": { "main": [[], [{ "node": "Search files and folders1", "type": "main", "index": 0 }]] },
+    "Search files and folders1": { "main": [[{ "node": "Download file", "type": "main", "index": 0 }]] },
+    "Download file": { "main": [[{ "node": "Code in JavaScript", "type": "main", "index": 0 }]] },
+    "Code in JavaScript": { "main": [[{ "node": "Analyze image", "type": "main", "index": 0 }]] },
+    "Analyze image": { "main": [[{ "node": "Code in JavaScript1", "type": "main", "index": 0 }]] },
+    "Code in JavaScript1": { "main": [[{ "node": "Append row in sheet", "type": "main", "index": 0 }]] },
+    "Append row in sheet": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
