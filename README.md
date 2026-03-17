@@ -1,18 +1,18 @@
-# Product Description Automation — n8n + GPT-4o Vision
+# n8n — Automated Product Description Generator
 
-An n8n workflow that automatically generates ready-to-publish product descriptions from photos stored in Google Drive. Results are saved to Google Sheets, which feeds directly into a live website.
-
----
-
-## The problem it solves
-
-Previously, every product description had to be written manually — someone would review the photos, write the text, format the features and benefits, then copy everything into a spreadsheet. With dozens or hundreds of products, this took hours every week.
-
-This workflow does it automatically. Just upload product photos to the right folder on Google Drive and run the workflow.
+An n8n workflow that generates ready-to-publish product descriptions from product photos using GPT-4o Vision. Results are saved directly to Google Sheets, which can feed a live website or product catalog.
 
 ---
 
-## How it works
+## The Problem It Solves
+
+Writing product descriptions manually is time-consuming — someone reviews photos, writes the copy, formats features and benefits, then enters everything into a spreadsheet. With dozens or hundreds of products, this takes hours every week.
+
+This workflow automates the entire process. Upload product photos to a Google Drive folder and run the workflow — structured descriptions appear in the spreadsheet within seconds.
+
+---
+
+## How It Works
 
 ```
 Google Drive (folders with product photos)
@@ -23,11 +23,11 @@ Download all photos of the product (multiple angles)
         ↓
 GPT-4o Vision — analyze photos and generate description
         ↓
-Parse response (name, company, description, features, EAN)
+Parse AI response (name, brand, description, features, EAN)
         ↓
 Google Sheets — ready row with full product description
         ↓
-Website (connected directly to the spreadsheet)
+Website or catalog (reads directly from the spreadsheet)
 ```
 
 **Google Drive folder structure:**
@@ -44,41 +44,48 @@ Each folder = one product. The workflow processes them one by one.
 
 ---
 
-## What GPT-4o generates
+## What GPT-4o Generates
 
-For each product:
-
-- **Product name** with weight/size
-- **Brand** (manufacturer)
-- **Short description** — 3 sentences in a professional gastronomy tone
-- **Features & benefits** — 2–4 lines in `feature – benefit` format
-- **EAN barcode** — if visible in the photos
-
----
-
-## Stack
-
-| Tool | Role |
-|---|---|
-| n8n | Workflow orchestration |
-| Google Drive | Source of product photos |
-| GPT-4o Vision (OpenAI) | Photo analysis and description generation |
-| Google Sheets | Output database, connected to website |
+| Field | Description |
+|-------|-------------|
+| Product name | With weight or size if visible in photo |
+| Brand | Manufacturer name |
+| Short description | 3 sentences in a professional tone |
+| Features & benefits | 2–4 lines in `feature – benefit` format |
+| EAN barcode | If visible in the photo |
 
 ---
 
-## How to import
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Automation | n8n |
+| AI Vision | GPT-4o (OpenAI) |
+| Photo storage | Google Drive |
+| Output | Google Sheets |
+
+---
+
+## Setup
 
 1. Download `workflow_automatyzacja_opisow.json`
-2. In n8n: **Import** → upload the file
-3. Replace placeholders in the workflow:
-   - Your Google Drive folder ID
-   - Your Google Sheets spreadsheet ID
-   - Add your own credentials for Google Drive, Google Sheets, and OpenAI
-4. Run
+2. In n8n: **Import from file** → upload the JSON
+3. Add your credentials: OpenAI API, Google Drive OAuth, Google Sheets OAuth
+4. Replace the following placeholders in the workflow:
+
+| Placeholder | Where to find it |
+|-------------|-----------------|
+| Google Drive Folder ID | Drive URL: `/folders/YOUR_ID` |
+| Google Sheets Spreadsheet ID | Sheets URL: `/d/YOUR_ID/` |
+
+5. Run the workflow manually — results appear in your spreadsheet row by row
 
 ---
 
-## Result
+## Notes
 
-Every run adds new rows to the spreadsheet with complete, ready-to-publish product descriptions — no manual writing, no copying, no formatting.
+- Each product folder can contain multiple photos (different angles) — GPT-4o analyzes all of them together before generating the description
+- The workflow loops through folders automatically — no manual triggering per product
+- Google Sheets output can be connected directly to a website (via Sheets API, CMS, or tools like Softr / Glide)
+- No credentials or sensitive data are included in the workflow JSON
